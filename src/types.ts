@@ -34,15 +34,22 @@ export interface DataQuality {
 }
 
 export interface ContractFields {
+  // PRD FR-6: 7 core dashboard fields
   rent: string;
   deposit: string;
-  lease_duration: string;
+  start_date: string;
+  end_date: string;
   notice_period: string;
-  termination_clause: string;
-  /** Lease / move-in start date from contract */
-  start_date?: string;
-  /** Utilities included / responsibility */
-  utilities?: string;
+  renewal_terms: string;
+  late_payment_penalties: string;
+  // Verbatim source quotes + page citations per field (FR-7)
+  rent_quote?: string;
+  deposit_quote?: string;
+  start_date_quote?: string;
+  end_date_quote?: string;
+  notice_period_quote?: string;
+  renewal_terms_quote?: string;
+  late_payment_penalties_quote?: string;
 }
 
 export interface Conflict {

@@ -12,13 +12,14 @@ import pdfplumber
 
 
 def extract_pdf_text(file_bytes: bytes) -> str:
-    """Extract plain text from a PDF byte buffer."""
+    """Extract plain text from a PDF byte buffer, with [Page N] markers for citation support."""
     buf = io.BytesIO(file_bytes)
     parts: list[str] = []
     with pdfplumber.open(buf) as pdf:
-        for page in pdf.pages:
+        for i, page in enumerate(pdf.pages, start=1):
             t = page.extract_text() or ""
-            parts.append(t)
+            if t.strip():
+                parts.append(f"[Page {i}]\n{t}")
     raw = "\n\n".join(parts)
     return normalize_whitespace(raw)
 

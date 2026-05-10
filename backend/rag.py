@@ -21,77 +21,104 @@ from embeddings import (
 from ollama_llm import OllamaServiceError, ollama_json_generate, ollama_text_generate
 from retrieval import ChunkStore, build_chunk_store
 
-CHUNK_SIZE = 500
-CHUNK_OVERLAP = 100
+CHUNK_SIZE = 2000   # ~500 tokens — matches PRD FR-3 (500–1000 token chunks)
+CHUNK_OVERLAP = 300  # 15% overlap — within PRD FR-3 (10–20%)
 TOP_K = 3
-# Upload analysis: merge several retrievals + document head (local LLM — no cloud token cap).
-ANALYSIS_MAX_CHUNKS = int(os.environ.get("ANALYSIS_MAX_CHUNKS", "16"))
-ANALYSIS_K_PER_QUERY = int(os.environ.get("ANALYSIS_K_PER_QUERY", "8"))
+# Upload analysis: keep total context under Groq free-tier 12K TPM limit.
+# 6 chunks × ~500 tokens + ~600 prompt tokens + ~2500 response = ~6100 tokens total.
+ANALYSIS_MAX_CHUNKS = int(os.environ.get("ANALYSIS_MAX_CHUNKS", "6"))
+ANALYSIS_K_PER_QUERY = int(os.environ.get("ANALYSIS_K_PER_QUERY", "4"))
 # Chat: more chunks + head of lease so answers are not starved of context.
-CHAT_TOP_K = int(os.environ.get("CHAT_TOP_K", "10"))
-CHAT_HEAD_CHUNKS = int(os.environ.get("CHAT_HEAD_CHUNKS", "3"))
+CHAT_TOP_K = int(os.environ.get("CHAT_TOP_K", "8"))
+CHAT_HEAD_CHUNKS = int(os.environ.get("CHAT_HEAD_CHUNKS", "2"))
 
 GROUNDING_SYSTEM = """You answer ONLY using the provided contract excerpts.
-If information is not found in the excerpts, you MUST say exactly:
-Not found in contract.
-
-Do not invent facts, amounts, or dates. Do not use outside knowledge."""
+If information is not found in the excerpts, you MUST say exactly: Not found in contract.
+Do not invent facts, amounts, or dates. Do not use outside knowledge.
+Always end your answer with a citation in the format: [Source: Page X] — use the [Page N] markers in the excerpts."""
 
 EXTRACTION_SYSTEM = """You extract structured information ONLY from the provided contract excerpts.
 If a field is not clearly stated in the excerpts, use exactly: Not Found in Contract
 Never use 0, €0, or placeholder amounts as guesses.
 Never infer dates or amounts not present in the excerpts.
 Return valid JSON only.
-Scalar fields notice_period, utilities, lease_duration, and termination_clause must be SHORT dashboard labels (see user prompt), not full clauses or statute commentary."""
+For every extracted value, also return a verbatim source quote (the exact sentence or phrase from the excerpts that contains this value, including its [Page N] marker).
+Short dashboard label fields (notice_period, renewal_terms, late_payment_penalties) must be concise — max ~120 characters."""
 
 COMBINED_RETRIEVAL_QUERY = (
-    "rental residential lease tenancy landlord tenant rent deposit Kaution Miete warmmiete "
-    "commencement start date Mietbeginn Einzug notice Kündigung Kündigungsfrist termination "
-    "utilities Nebenkosten lease duration Laufzeit risks penalties liability default "
-    "conflicts contradictions obligations renewal summary"
+    "rental residential lease tenancy landlord tenant rent deposit Kaution Miete "
+    "commencement start date end date expiry Mietbeginn notice Kündigung termination "
+    "renewal auto-renewal late payment penalty fee interest default "
+    "risks obligations conflicts summary recommendation"
 )
 
-MEGA_ANALYSIS_USER_PROMPT = """You are given a few excerpts from ONE contract. Perform ALL tasks below from these excerpts ONLY.
+MEGA_ANALYSIS_USER_PROMPT = """You are given excerpts from ONE rental contract. Extract ALL fields below from these excerpts ONLY.
 
-Return a single JSON object with exactly this structure:
+Return a single JSON object with EXACTLY this structure (no extra keys):
 {
   "is_rental": boolean,
   "validation_reason": string,
+
   "monthly_rent": string,
+  "monthly_rent_quote": string,
+
   "deposit": string,
+  "deposit_quote": string,
+
   "start_date": string,
+  "start_date_quote": string,
+
+  "end_date": string,
+  "end_date_quote": string,
+
   "notice_period": string,
-  "utilities": string,
-  "lease_duration": string,
-  "termination_clause": string,
+  "notice_period_quote": string,
+
+  "renewal_terms": string,
+  "renewal_terms_quote": string,
+
+  "late_payment_penalties": string,
+  "late_payment_penalties_quote": string,
+
   "risks": [{"risk_type": string, "severity": "LOW"|"MEDIUM"|"HIGH", "clause_reference": string, "explanation": string, "why_it_matters": string}],
   "conflicts": [{"clause_a": string, "clause_b": string, "topic": string, "explanation": string}],
   "final_summary": string,
   "recommendation": "SAFE"|"CAUTION"|"HIGH_RISK"
 }
 
-Rules:
-- is_rental: true if excerpts indicate a rental or housing lease / tenancy; false only if clearly not.
+Field rules:
+- is_rental: true if excerpts indicate a residential rental / tenancy; false only if clearly not.
 - validation_reason: one short sentence.
-- For any scalar field not in excerpts use exactly: Not Found in Contract
-- Never guess amounts or dates.
-- lease_duration: ONE compact phrase only (max ~90 characters). Examples: "24 months fixed term", "2 years then month-to-month", "Open-ended (unbefristet)", "12 months initial term". Do NOT paste BGB references, § symbols, or multi-sentence explanations — only how long the tenancy runs as stated.
-- notice_period: ONE short line for a UI card (max ~100 characters). If notice differs by how long the tenant has lived there, write a single summary like "3 / 6 / 9 months by length of tenancy" instead of listing every bracket in full prose. Otherwise give the usual notice (e.g. "3 months, written"). No semicolon-separated essays.
-- utilities: ONE short line (max ~110 characters): e.g. "Nebenkosten advance + direct meter contracts" or "Tenant pays electricity/gas to supplier" — not the full clause, no multi-sentence process description.
-- termination_clause: ONE short plain-English sentence when possible (max ~160 characters). Who may give ordinary notice and typical notice length; add "written notice" only if critical and still fits. Do NOT repeat landlord and tenant mirror-sentences if they share the same rule. No statute citations (no "§", no "BGB"). If absent: Not Found in Contract
-- risks: tenant-facing risks only; use [] if none.
+- monthly_rent: the monthly rent amount exactly as written (e.g. "€1,250/month"). Not Found in Contract if absent.
+- monthly_rent_quote: the verbatim sentence from the excerpts containing the rent figure, including [Page N] marker.
+- deposit: security deposit amount exactly as written. Not Found in Contract if absent.
+- deposit_quote: verbatim sentence containing the deposit figure, including [Page N] marker.
+- start_date: lease commencement date exactly as written. Not Found in Contract if absent.
+- start_date_quote: verbatim sentence containing the start date, including [Page N] marker.
+- end_date: lease expiry / end date exactly as written. If open-ended, write "Open-ended tenancy". Not Found in Contract only if truly absent.
+- end_date_quote: verbatim sentence containing the end date or open-ended clause, including [Page N] marker.
+- notice_period: ONE concise line (max 120 chars). E.g. "3 months written notice" or "3 / 6 / 9 months by tenancy length". No statute citations.
+- notice_period_quote: verbatim sentence containing the notice requirement, including [Page N] marker.
+- renewal_terms: ONE concise line (max 120 chars). E.g. "Auto-renews for 12 months unless notice given" or "No automatic renewal". Not Found in Contract if absent.
+- renewal_terms_quote: verbatim sentence containing the renewal clause, including [Page N] marker.
+- late_payment_penalties: ONE concise line (max 120 chars). E.g. "5% interest after 5 days late" or "€50 fee per missed payment". Not Found in Contract if absent.
+- late_payment_penalties_quote: verbatim sentence containing the late payment clause, including [Page N] marker.
+- risks: tenant-facing risks only. ALWAYS flag if present: unusual termination penalties, automatic renewal clauses, rent escalation clauses, restricted use clauses. Use [] if none.
 - conflicts: [] if none evident.
-- final_summary: brief plain English from excerpts only.
-- recommendation: SAFE, CAUTION, or HIGH_RISK from excerpts only.
-- For monthly_rent, deposit, start_date: when the information appears in any excerpt, copy amounts and dates as written (digits, €, periods). Only use Not Found in Contract if truly absent from all excerpts.
-- Read every excerpt before deciding a field is missing."""
+- final_summary: 2–4 sentences, plain English, from excerpts only.
+- recommendation: SAFE, CAUTION, or HIGH_RISK based solely on excerpts.
+- For any _quote field where the value is Not Found in Contract, set the quote to "" (empty string).
+- Read every excerpt carefully before deciding a field is missing."""
 
 RETRIEVAL_QUERIES_FOR_ANALYSIS = [
     COMBINED_RETRIEVAL_QUERY,
-    "monthly rent Miete Kaltmiete warmmiete Bruttomiete Euro € EUR deposit Kaution security bond",
-    "lease start commencement Mietbeginn Bezug Einzug effective date duration Laufzeit Monate Jahre",
-    "Kündigung Kündigungsfrist notice period termination Mieter Vermieter schriftlich Monate Wochen",
-    "utilities Nebenkosten NK Betriebskosten Heizkosten Warmmiete Vorauszahlung Umlage heating Strom Wasser",
+    "monthly rent Miete Kaltmiete warmmiete Bruttomiete Euro € EUR amount per month",
+    "deposit Kaution security bond refundable amount weeks months rent",
+    "lease start commencement date Mietbeginn move-in effective date",
+    "lease end expiry date termination date fixed term duration Laufzeit",
+    "notice period Kündigungsfrist written notice months weeks termination",
+    "renewal auto-renewal automatic extension clause Verlängerung",
+    "late payment penalty interest fee default overdue rent arrears",
 ]
 
 _sessions: dict[str, "SessionState"] = {}
@@ -425,23 +452,29 @@ def validate_and_analyze_upload(session: SessionState) -> tuple[dict[str, Any], 
                 None,
             )
 
+    def _norm_quote(raw: Any) -> str:
+        s = str(raw or "").strip()
+        return s if s and s.lower() not in ("not found in contract", "not found", "n/a", "none", "") else ""
+
     fields = {
         "monthly_rent": _norm_contract_field(data.get("monthly_rent")),
         "deposit": _norm_contract_field(data.get("deposit")),
         "start_date": _norm_contract_field(data.get("start_date")),
+        "end_date": _norm_contract_field(data.get("end_date")),
         "notice_period": _norm_contract_field(data.get("notice_period")),
-        "utilities": _norm_contract_field(data.get("utilities")),
-        "lease_duration": _norm_contract_field(data.get("lease_duration")),
+        "renewal_terms": _norm_contract_field(data.get("renewal_terms")),
+        "late_payment_penalties": _norm_contract_field(data.get("late_payment_penalties")),
     }
-    np = fields["notice_period"]
-    if "not found" not in np.lower():
-        fields["notice_period"] = _compact_notice_period_display(np)
-    util = fields["utilities"]
-    if "not found" not in util.lower():
-        fields["utilities"] = _compact_utilities_display(util)
-    ld = fields["lease_duration"]
-    if "not found" not in ld.lower():
-        fields["lease_duration"] = _compact_lease_duration_display(ld)
+    np_val = fields["notice_period"]
+    if "not found" not in np_val.lower():
+        fields["notice_period"] = _compact_notice_period_display(np_val)
+    rt_val = fields["renewal_terms"]
+    if "not found" not in rt_val.lower():
+        fields["renewal_terms"] = _truncate_for_dashboard(rt_val, 120)
+    lp_val = fields["late_payment_penalties"]
+    if "not found" not in lp_val.lower():
+        fields["late_payment_penalties"] = _truncate_for_dashboard(lp_val, 120)
+
     risks = data.get("risks")
     if not isinstance(risks, list):
         risks = []
@@ -453,22 +486,26 @@ def validate_and_analyze_upload(session: SessionState) -> tuple[dict[str, Any], 
     if rec not in ("SAFE", "CAUTION", "HIGH_RISK"):
         rec = "CAUTION"
 
-    term_raw = _norm_contract_field(data.get("termination_clause"))
-    if "not found" not in term_raw.lower():
-        term_out = _compact_termination_display(term_raw)
-    else:
-        term_out = "Not Found in Contract"
-
     contract_fields = {
         "rent": fields["monthly_rent"],
+        "rent_quote": _norm_quote(data.get("monthly_rent_quote")),
         "deposit": fields["deposit"],
-        "lease_duration": fields["lease_duration"],
-        "notice_period": fields["notice_period"],
-        "termination_clause": term_out,
+        "deposit_quote": _norm_quote(data.get("deposit_quote")),
         "start_date": fields["start_date"],
-        "utilities": fields["utilities"],
+        "start_date_quote": _norm_quote(data.get("start_date_quote")),
+        "end_date": fields["end_date"],
+        "end_date_quote": _norm_quote(data.get("end_date_quote")),
+        "notice_period": fields["notice_period"],
+        "notice_period_quote": _norm_quote(data.get("notice_period_quote")),
+        "renewal_terms": fields["renewal_terms"],
+        "renewal_terms_quote": _norm_quote(data.get("renewal_terms_quote")),
+        "late_payment_penalties": fields["late_payment_penalties"],
+        "late_payment_penalties_quote": _norm_quote(data.get("late_payment_penalties_quote")),
     }
-    missing_fields = [k for k, v in contract_fields.items() if "not found" in v.lower()]
+    missing_fields = [
+        k for k, v in contract_fields.items()
+        if not k.endswith("_quote") and "not found" in v.lower()
+    ]
     confidence = max(30.0, 100.0 - len(missing_fields) * 12.0)
     dq = build_data_quality(session)
 
@@ -593,7 +630,7 @@ def answer_question(session: SessionState, question: str) -> str:
 
 Answer using ONLY the excerpts above. Quote or paraphrase the relevant lines.
 If the answer is not in the excerpts, say exactly: Not found in contract.
-Keep the answer concise (a few sentences)."""
+Keep the answer concise (2–3 sentences), then add a citation on a new line in the format: [Source: Page X] — use the [Page N] markers visible in the excerpts."""
     return llm_text_from_context(
         GROUNDING_SYSTEM,
         user_prompt,

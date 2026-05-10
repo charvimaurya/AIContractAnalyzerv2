@@ -1,8 +1,8 @@
 import React, { useState } from 'react';
 import { createPortal } from 'react-dom';
 import ReactMarkdown from 'react-markdown';
-import { 
-  Shield, 
+import {
+  Shield,
   FileText,
   AlertTriangle,
   CheckCircle2,
@@ -13,7 +13,8 @@ import {
   Lock,
   MessageSquare,
   Send,
-  Zap,
+  RefreshCcw,
+  Receipt,
   Loader2,
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
@@ -81,17 +82,20 @@ function AnalysisPrintReport({
       <table className="print-table">
         <tbody>
           {[
-            ['Monthly rent', displayContractValue(cf?.rent)],
-            ['Security deposit', displayContractValue(cf?.deposit)],
-            ['Lease start', displayContractValue(cf?.start_date)],
-            ['Lease duration', displayContractValue(cf?.lease_duration)],
-            ['Notice period', displayContractValue(cf?.notice_period)],
-            ['Utilities', displayContractValue(cf?.utilities)],
-            ['Termination (summary)', displayContractValue(cf?.termination_clause)],
-          ].map(([label, val]) => (
+            ['Monthly rent', displayContractValue(cf?.rent), cf?.rent_quote],
+            ['Security deposit', displayContractValue(cf?.deposit), cf?.deposit_quote],
+            ['Lease start', displayContractValue(cf?.start_date), cf?.start_date_quote],
+            ['Lease end', displayContractValue(cf?.end_date), cf?.end_date_quote],
+            ['Notice period', displayContractValue(cf?.notice_period), cf?.notice_period_quote],
+            ['Renewal terms', displayContractValue(cf?.renewal_terms), cf?.renewal_terms_quote],
+            ['Late payment penalty', displayContractValue(cf?.late_payment_penalties), cf?.late_payment_penalties_quote],
+          ].map(([label, val, quote]) => (
             <tr key={label}>
               <th scope="row">{label}</th>
-              <td className="whitespace-pre-wrap">{val}</td>
+              <td className="whitespace-pre-wrap">
+                <span>{val}</span>
+                {quote && <span className="block text-[8.5pt] text-slate-500 italic mt-1">"{quote}"</span>}
+              </td>
             </tr>
           ))}
         </tbody>
@@ -235,14 +239,14 @@ export default function AnalysisDashboard({ analysis, file: _file, onReset }: An
       : '—';
 
   const dashboardCards = [
-    { label: 'Monthly Rent', value: cf?.rent, icon: <DollarSign className="w-5 h-5" /> },
-    { label: 'Security Deposit', value: cf?.deposit, icon: <Lock className="w-5 h-5" /> },
-    { label: 'Lease Start', value: cf?.start_date, icon: <Calendar className="w-5 h-5" /> },
-    { label: 'Lease Duration', value: cf?.lease_duration, icon: <Calendar className="w-5 h-5" /> },
-    { label: 'Notice Period', value: cf?.notice_period, icon: <Clock className="w-5 h-5" /> },
-    { label: 'Utilities', value: cf?.utilities, icon: <Zap className="w-5 h-5" /> },
-    { label: 'Termination', value: cf?.termination_clause, icon: <AlertCircle className="w-5 h-5" /> },
-    { label: 'Confidence', value: confidenceDisplay, icon: <CheckCircle2 className="w-5 h-5" /> },
+    { label: 'Monthly Rent', value: cf?.rent, quote: cf?.rent_quote, icon: <DollarSign className="w-5 h-5" /> },
+    { label: 'Security Deposit', value: cf?.deposit, quote: cf?.deposit_quote, icon: <Lock className="w-5 h-5" /> },
+    { label: 'Lease Start', value: cf?.start_date, quote: cf?.start_date_quote, icon: <Calendar className="w-5 h-5" /> },
+    { label: 'Lease End', value: cf?.end_date, quote: cf?.end_date_quote, icon: <Calendar className="w-5 h-5" /> },
+    { label: 'Notice Period', value: cf?.notice_period, quote: cf?.notice_period_quote, icon: <Clock className="w-5 h-5" /> },
+    { label: 'Renewal Terms', value: cf?.renewal_terms, quote: cf?.renewal_terms_quote, icon: <RefreshCcw className="w-5 h-5" /> },
+    { label: 'Late Payment Penalty', value: cf?.late_payment_penalties, quote: cf?.late_payment_penalties_quote, icon: <Receipt className="w-5 h-5" /> },
+    { label: 'Confidence', value: confidenceDisplay, quote: undefined, icon: <CheckCircle2 className="w-5 h-5" /> },
   ];
 
   const sendChat = async () => {
@@ -343,50 +347,44 @@ export default function AnalysisDashboard({ analysis, file: _file, onReset }: An
             <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-4 gap-4">
               {dashboardCards.map((card, i) => {
                 const isConfidence = card.label === 'Confidence';
-                const isTermination = card.label === 'Termination';
-                const isLeaseDuration = card.label === 'Lease Duration';
-                const isNoticePeriod = card.label === 'Notice Period';
-                const isUtilities = card.label === 'Utilities';
-                const isLongTextCard =
-                  isTermination || isLeaseDuration || isNoticePeriod || isUtilities;
+                const isLongTextCard = ['Notice Period', 'Renewal Terms', 'Late Payment Penalty'].includes(card.label);
                 const displayValue =
                   isConfidence
                     ? card.value
                     : isContractValueMissing(card.value)
                       ? 'Not Found in Contract'
                       : String(card.value);
-                const highlightMissing =
-                  !isConfidence && isContractValueMissing(card.value);
+                const highlightMissing = !isConfidence && isContractValueMissing(card.value);
+                const hasQuote = !isConfidence && card.quote && card.quote.trim().length > 0;
                 return (
-                <motion.div 
+                <motion.div
                   initial={{ opacity: 0, y: 10 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ delay: i * 0.05 }}
-                  key={i} 
+                  key={i}
                   className={cn(
-                    "bg-white p-6 rounded-2xl border shadow-sm",
+                    "bg-white p-6 rounded-2xl border shadow-sm flex flex-col",
                     highlightMissing ? "border-red-200 bg-red-50/30" : "border-slate-100"
                   )}
                 >
-                  <div className={cn("mb-3 w-8 h-8 rounded-lg flex items-center justify-center", highlightMissing ? "text-red-500 bg-red-50" : "text-blue-600 bg-blue-50")}>
+                  <div className={cn("mb-3 w-8 h-8 rounded-lg flex items-center justify-center shrink-0", highlightMissing ? "text-red-500 bg-red-50" : "text-blue-600 bg-blue-50")}>
                     {card.icon}
                   </div>
                   <div className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">{card.label}</div>
                   <div
-                    title={
-                      isLongTextCard && !highlightMissing && displayValue.length > 80
-                        ? displayValue
-                        : undefined
-                    }
+                    title={isLongTextCard && !highlightMissing && displayValue.length > 80 ? displayValue : undefined}
                     className={cn(
-                      isLongTextCard
-                        ? "text-sm font-bold leading-snug line-clamp-6"
-                        : "text-lg font-black leading-tight",
+                      isLongTextCard ? "text-sm font-bold leading-snug line-clamp-4" : "text-lg font-black leading-tight",
                       highlightMissing ? "text-red-600" : "text-slate-900"
                     )}
                   >
                     {displayValue}
                   </div>
+                  {hasQuote && (
+                    <p className="mt-3 pt-3 border-t border-slate-100 text-[10px] text-slate-400 italic leading-relaxed line-clamp-2" title={card.quote}>
+                      "{card.quote}"
+                    </p>
+                  )}
                 </motion.div>
               );
               })}
