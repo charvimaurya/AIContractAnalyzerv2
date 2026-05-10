@@ -1,12 +1,13 @@
 import { ContractAnalysis, FileData } from "../types";
 
 /**
- * In dev, prefer same-origin `/api` (Vite proxy → FastAPI) so CORS is never an issue.
- * Override with VITE_API_URL when the UI talks to a remote API.
+ * In dev, same-origin `/api` is proxied by Vite to FastAPI (see vite.config.ts).
+ * In production (e.g. Vercel), set VITE_API_URL to your deployed API origin (no trailing slash),
+ * e.g. https://your-api.onrender.com — and allow that frontend origin in backend CORS_ORIGINS.
  */
 const API_BASE =
-  import.meta.env.VITE_API_URL?.replace(/\/$/, "") ||
-  (import.meta.env.DEV ? "" : "http://127.0.0.1:8000");
+  import.meta.env.VITE_API_URL?.replace(/\/$/, "").trim() ||
+  (import.meta.env.DEV ? "" : "");
 
 function apiPath(path: string): string {
   const base = API_BASE;
