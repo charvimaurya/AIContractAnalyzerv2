@@ -4,6 +4,10 @@ import path from 'path';
 import {defineConfig} from 'vite';
 
 export default defineConfig({
+    build: {
+      // Quieter Vercel logs; main fix for size is code-splitting later if desired.
+      chunkSizeWarningLimit: 900,
+    },
     plugins: [react(), tailwindcss()],
     resolve: {
       alias: {
