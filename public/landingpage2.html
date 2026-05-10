@@ -1,0 +1,476 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>RentSense AI | Understand Your Rental Contract Instantly</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+:root {
+--primary: #2563eb;
+--primary-hover: #1d4ed8;
+--bg: #ffffff;
+--text-main: #111827;
+--text-muted: #4b5563;
+--card-bg: #f9fafb;
+--border: #e5e7eb;
+}
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+}
+
+html {
+    scroll-behavior: smooth;
+}
+
+body {
+    background-color: var(--bg);
+    color: var(--text-main);
+    line-height: 1.5;
+    -webkit-font-smoothing: antialiased;
+}
+
+.container {
+    max-width: 1100px;
+    margin: 0 auto;
+    padding: 0 24px;
+}
+
+header {
+    padding: 24px 0;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    background: rgba(255, 255, 255, 0.8);
+    backdrop-filter: blur(8px);
+    z-index: 100;
+    border-bottom: 1px solid var(--border);
+}
+
+.logo {
+    font-weight: 800;
+    font-size: 20px;
+    color: var(--primary);
+    letter-spacing: -0.02em;
+}
+
+/* Hero Section */
+.hero {
+    padding: 160px 0 80px;
+    text-align: center;
+}
+
+.headline {
+    font-size: 56px;
+    font-weight: 800;
+    line-height: 1.1;
+    letter-spacing: -0.03em;
+    margin-bottom: 24px;
+    max-width: 800px;
+    margin-left: auto;
+    margin-right: auto;
+}
+
+.subheadline {
+    font-size: 20px;
+    color: var(--text-muted);
+    max-width: 600px;
+    margin: 0 auto 40px;
+    line-height: 1.6;
+}
+
+.btn {
+    display: inline-block;
+    background: var(--primary);
+    color: white;
+    padding: 14px 32px;
+    border-radius: 8px;
+    font-weight: 600;
+    text-decoration: none;
+    transition: all 0.2s ease;
+    box-shadow: 0 4px 6px -1px rgba(37, 99, 235, 0.2);
+}
+
+.btn:hover {
+    background: var(--primary-hover);
+    transform: translateY(-1px);
+    box-shadow: 0 10px 15px -3px rgba(37, 99, 235, 0.3);
+}
+
+/* Mock UI Section */
+.preview {
+    margin: 60px auto;
+    max-width: 900px;
+    background: linear-gradient(135deg, #f3f4f6 0%, #e5e7eb 100%);
+    border-radius: 24px;
+    padding: 12px;
+    box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.1);
+    position: relative;
+}
+
+.preview-inner {
+    background: white;
+    border-radius: 14px;
+    overflow: hidden;
+    border: 1px solid var(--border);
+    aspect-ratio: 16/10;
+    display: flex;
+    flex-direction: column;
+}
+
+.preview-header {
+    padding: 16px 24px;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.dot { width: 10px; height: 10px; border-radius: 50%; background: #e5e7eb; }
+.dot.blue { background: #3b82f6; }
+
+.preview-content {
+    padding: 24px;
+    display: grid;
+    grid-template-columns: 2fr 1fr;
+    gap: 20px;
+    height: 100%;
+}
+
+.preview-card {
+    background: #f9fafb;
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 16px;
+}
+
+.preview-title {
+    font-size: 12px;
+    font-weight: 700;
+    text-transform: uppercase;
+    color: #9ca3af;
+    letter-spacing: 0.05em;
+    margin-bottom: 12px;
+}
+
+.preview-item {
+    height: 8px;
+    background: #e5e7eb;
+    border-radius: 4px;
+    margin-bottom: 10px;
+}
+
+.preview-item.short { width: 40%; }
+.preview-item.med { width: 70%; }
+
+/* Features Section */
+.section {
+    padding: 100px 0;
+}
+
+.section-title {
+    text-align: center;
+    font-size: 32px;
+    font-weight: 800;
+    margin-bottom: 60px;
+    letter-spacing: -0.02em;
+}
+
+.features-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    gap: 32px;
+}
+
+.feature-card {
+    padding: 40px;
+    background: var(--card-bg);
+    border-radius: 16px;
+    border: 1px solid var(--border);
+    transition: border-color 0.2s ease;
+}
+
+.feature-card:hover {
+    border-color: var(--primary);
+}
+
+.feature-icon {
+    width: 48px;
+    height: 48px;
+    background: white;
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-bottom: 24px;
+    box-shadow: 0 4px 6px rgba(0,0,0,0.05);
+    font-size: 24px;
+}
+
+.feature-h {
+    font-size: 20px;
+    font-weight: 700;
+    margin-bottom: 12px;
+}
+
+.feature-p {
+    color: var(--text-muted);
+    font-size: 16px;
+    line-height: 1.6;
+}
+
+/* How it Works */
+.steps {
+    display: flex;
+    flex-direction: column;
+    gap: 40px;
+    max-width: 700px;
+    margin: 0 auto;
+}
+
+.step {
+    display: flex;
+    gap: 24px;
+    align-items: flex-start;
+}
+
+.step-num {
+    width: 40px;
+    height: 40px;
+    background: var(--primary);
+    color: white;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 700;
+    flex-shrink: 0;
+}
+
+.step-content h3 {
+    font-size: 18px;
+    font-weight: 700;
+    margin-bottom: 8px;
+}
+
+.step-content p {
+    color: var(--text-muted);
+}
+
+/* Social Proof */
+.testimonials {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    gap: 24px;
+    margin-top: 40px;
+}
+
+.testimonial {
+    background: white;
+    padding: 32px;
+    border-radius: 16px;
+    border: 1px solid var(--border);
+    font-style: italic;
+}
+
+.testimonial-author {
+    margin-top: 16px;
+    font-style: normal;
+    font-weight: 600;
+    font-size: 14px;
+    color: var(--text-muted);
+}
+
+/* CTA Section */
+.cta-section {
+    background: #111827;
+    color: white;
+    padding: 100px 0;
+    text-align: center;
+    margin: 80px 0;
+    border-radius: 24px;
+}
+
+.cta-section .headline {
+    font-size: 40px;
+    color: white;
+}
+
+/* Footer */
+footer {
+    padding: 60px 0;
+    border-top: 1px solid var(--border);
+    text-align: center;
+    color: var(--text-muted);
+    font-size: 14px;
+}
+
+.footer-logo {
+    font-weight: 700;
+    color: var(--text-main);
+    margin-bottom: 8px;
+    display: block;
+}
+
+@media (max-width: 768px) {
+    .headline { font-size: 40px; }
+    .preview-content { grid-template-columns: 1fr; }
+    .preview-card:last-child { display: none; }
+}
+</style>
+</head>
+<body>
+<header>
+    <div class="container" style="display: flex; justify-content: space-between; width: 100%;">
+        <a href="/" class="logo" style="text-decoration: none; color: inherit;">RentSense AI</a>
+        <a href="#app" class="btn" style="padding: 10px 20px; font-size: 14px;">Analyze Now</a>
+    </div>
+</header>
+
+<div class="container">
+    <section class="hero">
+        <h1 class="headline">Understand Your Rental Contract Instantly</h1>
+        <p class="subheadline">Upload your lease. Get clear answers about rent, deposit, risks, and key terms in seconds.</p>
+        <a href="#app" class="btn">Try Free Analysis</a>
+
+        <div class="preview">
+            <div class="preview-inner">
+                <div class="preview-header">
+                    <div class="dot blue"></div>
+                    <div class="dot"></div>
+                    <div class="dot"></div>
+                    <div style="font-size: 11px; font-weight: 600; color: #6b7280; margin-left: 10px;">Contract Analysis Dashboard</div>
+                </div>
+                <div class="preview-content">
+                    <div>
+                        <div class="preview-card" style="height: 100%;">
+                            <div class="preview-title">Detected Key Terms</div>
+                            <div class="preview-item med" style="background: #eff6ff;"></div>
+                            <div class="preview-item short"></div>
+                            <div class="preview-item med" style="background: #eff6ff;"></div>
+                            <div class="preview-item med"></div>
+                            <div class="preview-item short" style="background: #eff6ff;"></div>
+                            <div style="margin-top: 24px; padding: 12px; background: #fffbeb; border-radius: 8px; border: 1px solid #fef3c7;">
+                                <div style="font-size: 10px; font-weight: 800; color: #92400e; margin-bottom: 4px;">RISK DETECTED</div>
+                                <div class="preview-item" style="background: #fcd34d; width: 90%;"></div>
+                            </div>
+                        </div>
+                    </div>
+                    <div style="display: flex; flex-direction: column; gap: 12px;">
+                        <div class="preview-card">
+                            <div class="preview-title">Monthly Rent</div>
+                            <div style="font-size: 20px; font-weight: 800; color: #111827;">&euro;1,280.00</div>
+                        </div>
+                        <div class="preview-card">
+                            <div class="preview-title">Notice Period</div>
+                            <div style="font-size: 16px; font-weight: 600; color: #111827;">3 Months</div>
+                        </div>
+                        <div class="preview-card" style="flex-grow: 1;">
+                            <div class="preview-title">Q&amp;A Chat</div>
+                            <div style="font-size: 10px; color: #9ca3af; margin-top: 10px;">Ask about utilities...</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <section class="section" id="features">
+        <h2 class="section-title">Everything you need to sign with confidence</h2>
+        <div class="features-grid">
+            <div class="feature-card">
+                <div class="feature-icon">📄</div>
+                <h3 class="feature-h">AI Contract Breakdown</h3>
+                <p class="feature-p">Our AI instantly extracts monthly rent, security deposit amounts, and all critical lease dates so you don't have to hunt for them.</p>
+            </div>
+            <div class="feature-card">
+                <div class="feature-icon">⚠️</div>
+                <h3 class="feature-h">Risk Detection</h3>
+                <p class="feature-p">We highlight hidden risks, unusual clauses, or predatory terms in your lease agreement before you sign your name.</p>
+            </div>
+            <div class="feature-card">
+                <div class="feature-icon">💬</div>
+                <h3 class="feature-h">Simple Q&amp;A Chatbot</h3>
+                <p class="feature-p">Have a specific question? Ask our chatbot "Are pets allowed?" or "Who pays for repairs?" and get answers directly from your contract.</p>
+            </div>
+        </div>
+    </section>
+
+    <section class="section" id="how-it-works">
+        <h2 class="section-title">How It Works</h2>
+        <div class="steps">
+            <div class="step">
+                <div class="step-num">1</div>
+                <div class="step-content">
+                    <h3>Upload PDF</h3>
+                    <p>Securely upload your digital rental contract or a clear scan of your physical document.</p>
+                </div>
+            </div>
+            <div class="step">
+                <div class="step-num">2</div>
+                <div class="step-content">
+                    <h3>AI Analyzes Contract</h3>
+                    <p>Our legal-trained AI processes the entire document in seconds, identifying every important detail.</p>
+                </div>
+            </div>
+            <div class="step">
+                <div class="step-num">3</div>
+                <div class="step-content">
+                    <h3>Get Instant Answers</h3>
+                    <p>Review your custom dashboard and chat with the document to clarify any confusing terms.</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <section class="section">
+        <h2 class="section-title">What tenants are saying</h2>
+        <div class="testimonials">
+            <div class="testimonial">
+                "Saved me from missing hidden administration fees that were buried on page 14 of my lease."
+                <div class="testimonial-author">Alex, Berlin</div>
+            </div>
+            <div class="testimonial">
+                "Finally understood my complex contract in just minutes. The chatbot is a total game changer."
+                <div class="testimonial-author">Sarah, Munich</div>
+            </div>
+        </div>
+    </section>
+
+    <section class="cta-section" id="app">
+        <h2 class="headline">Stop reading complex contracts.<br>Start understanding them.</h2>
+        <a href="/upload" class="btn" style="background: white; color: var(--primary); margin-top: 20px;">Upload Your Contract</a>
+    </section>
+</div>
+
+<footer>
+    <div class="container">
+        <span class="footer-logo">RentSense AI</span>
+        <p>&copy; 2026 RentSense AI. All rights reserved.</p>
+        <p style="margin-top: 10px; font-size: 12px; opacity: 0.6;">This report is AI-generated for informational purposes only and is not legal advice.</p>
+    </div>
+</footer>
+
+<script>
+    document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+        anchor.addEventListener('click', function (e) {
+            const id = this.getAttribute('href');
+            if (!id || id === '#' || id.length < 2) return;
+            const target = document.querySelector(id);
+            if (!target) return;
+            e.preventDefault();
+            target.scrollIntoView({ behavior: 'smooth' });
+        });
+    });
+</script>
+</body>
+</html>

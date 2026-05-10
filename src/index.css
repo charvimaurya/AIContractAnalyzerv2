@@ -1,0 +1,122 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500&family=Playfair+Display:ital,wght@0,700;0,900;1,400&display=swap');
+@import "tailwindcss";
+
+@theme {
+  --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
+  --font-display: "Playfair Display", serif;
+  --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, monospace;
+}
+
+@layer base {
+  body {
+    @apply antialiased text-slate-900 bg-[#F3F4F6];
+  }
+}
+
+.selection-blue {
+  @apply selection:bg-blue-100 selection:text-blue-900;
+}
+
+/* Print / PDF: hide chrome, clean layout */
+@media print {
+  @page {
+    margin: 14mm 16mm;
+    size: A4;
+  }
+  body {
+    background: white !important;
+    color: #0f172a !important;
+    font-size: 10.5pt;
+    line-height: 1.45;
+  }
+  .no-print {
+    display: none !important;
+  }
+  .bg-\[\#F3F4F6\],
+  .bg-slate-50\/50 {
+    background: white !important;
+  }
+  .analysis-print-report {
+    font-family: var(--font-sans), ui-sans-serif, system-ui, sans-serif;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+  .analysis-print-report h1 {
+    font-size: 18pt;
+    letter-spacing: -0.02em;
+    margin: 0 0 0.35rem;
+    page-break-after: avoid;
+  }
+  .analysis-print-report h2 {
+    font-size: 11pt;
+    text-transform: uppercase;
+    letter-spacing: 0.12em;
+    color: #475569;
+    border-bottom: 2px solid #1d4ed8;
+    padding-bottom: 0.25rem;
+    margin: 1.25rem 0 0.65rem;
+    page-break-after: avoid;
+  }
+  .analysis-print-report .print-meta {
+    font-size: 9pt;
+    color: #64748b;
+    margin-bottom: 1rem;
+  }
+  .analysis-print-report table.print-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 0.5rem 0 1rem;
+    font-size: 9.5pt;
+  }
+  .analysis-print-report table.print-table th,
+  .analysis-print-report table.print-table td {
+    border: 1px solid #cbd5e1;
+    padding: 0.4rem 0.55rem;
+    vertical-align: top;
+    text-align: left;
+  }
+  .analysis-print-report table.print-table th {
+    background: #f1f5f9;
+    font-weight: 700;
+    width: 28%;
+    color: #334155;
+  }
+  .analysis-print-report .print-avoid-break {
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
+  .analysis-print-report .print-risk {
+    border: 1px solid #e2e8f0;
+    border-radius: 6px;
+    padding: 0.65rem 0.75rem;
+    margin-bottom: 0.65rem;
+    background: #fafafa;
+  }
+  .analysis-print-report .print-risk-sev {
+    display: inline-block;
+    font-size: 8pt;
+    font-weight: 800;
+    letter-spacing: 0.06em;
+    padding: 0.12rem 0.4rem;
+    border-radius: 3px;
+    margin-bottom: 0.35rem;
+  }
+  .analysis-print-report .prose-print {
+    font-size: 9.5pt;
+    color: #334155;
+  }
+  .analysis-print-report .prose-print p {
+    margin: 0.35em 0;
+  }
+  .analysis-print-report .prose-print ul {
+    margin: 0.35em 0;
+    padding-left: 1.1em;
+  }
+  .analysis-print-report .print-footer {
+    margin-top: 1.5rem;
+    padding-top: 0.75rem;
+    border-top: 1px solid #cbd5e1;
+    font-size: 8.5pt;
+    color: #64748b;
+  }
+}
